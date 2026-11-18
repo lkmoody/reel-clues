@@ -1,32 +1,38 @@
-# React + TypeScript + Vite
+# Reel Clues
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A daily movie trivia game. Players identify a film from clues revealed one at a time, and fewer clues means a better score.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node 26 (see `.nvmrc`)
+- pnpm 12 (`npm install -g pnpm`)
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```powershell
+pnpm install
+pnpm dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Packages
+
+| Package | What it holds |
+| --- | --- |
+| `packages/web` | React app (Vite) |
+| `packages/shared` | Types and game logic shared by the client and server |
+| `packages/api` | Fastify API (placeholder) |
+| `packages/generator` | Nightly puzzle generator (placeholder) |
+
+## Scripts
+
+Run from the repo root:
+
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Start the web app |
+| `pnpm build` | Build every package |
+| `pnpm lint` | Lint the whole repo |
+
+## Docs
+
+Project scope, the implementation plan and architecture decisions (ADRs) are in [`docs/`](docs/).

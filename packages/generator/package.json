@@ -1,0 +1,17 @@
+{
+  "name": "@reel-clues/generator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node src/index.ts"
+  },
+  "dependencies": {
+    "@reel-clues/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

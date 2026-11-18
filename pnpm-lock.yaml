@@ -171,10 +171,60 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@types/node':
+      specifier: ^26.6.6
+      version: 26.6.6
+    typescript:
+      specifier: ~7.0.2
+      version: 7.0.2
+
 importers:
 
   .:
+    devDependencies:
+      oxlint:
+        specifier: ^1.90.0
+        version: 1.94.0
+
+  packages/api:
     dependencies:
+      '@reel-clues/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
+  packages/generator:
+    dependencies:
+      '@reel-clues/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
+  packages/shared:
+    devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
+  packages/web:
+    dependencies:
+      '@reel-clues/shared':
+        specifier: workspace:*
+        version: link:../shared
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -183,7 +233,7 @@ importers:
         version: 19.3.1(react@19.3.1)
     devDependencies:
       '@types/node':
-        specifier: ^26.6.6
+        specifier: 'catalog:'
         version: 26.6.6
       '@types/react':
         specifier: ^19.3.0
@@ -194,11 +244,8 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.1.2
         version: 6.3.0(vite@8.3.8(@types/node@26.6.6))
-      oxlint:
-        specifier: ^1.90.0
-        version: 1.94.0
       typescript:
-        specifier: ~7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vite:
         specifier: ^8.3.6
