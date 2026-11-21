@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "pnpm --filter @reel-clues/web dev",
     "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
     "lint": "oxlint"
   },
   "devDependencies": {
