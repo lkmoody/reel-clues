@@ -16,22 +16,22 @@ pnpm dev
 
 ## Packages
 
-| Package | What it holds |
-| --- | --- |
-| `packages/web` | React app (Vite) |
-| `packages/shared` | Types and game logic shared by the client and server |
-| `packages/api` | Fastify API (placeholder) |
-| `packages/generator` | Nightly puzzle generator (placeholder) |
+| Package              | What it holds                                        |
+| -------------------- | ---------------------------------------------------- |
+| `packages/web`       | React app (Vite)                                     |
+| `packages/shared`    | Types and game logic shared by the client and server |
+| `packages/api`       | Fastify API (placeholder)                            |
+| `packages/generator` | Nightly puzzle generator (placeholder)               |
 
 ## Scripts
 
 Run from the repo root:
 
-| Command | What it does |
-| --- | --- |
-| `pnpm dev` | Start the web app |
+| Command      | What it does        |
+| ------------ | ------------------- |
+| `pnpm dev`   | Start the web app   |
 | `pnpm build` | Build every package |
-| `pnpm lint` | Lint the whole repo |
+| `pnpm lint`  | Lint the whole repo |
 
 ## Docs
 
