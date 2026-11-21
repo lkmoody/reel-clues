@@ -24,27 +24,33 @@ Version 1 is a single-player daily puzzle with accounts, streaks and a generatio
 
 - One puzzle per day, same for every player, rolling over at midnight UTC
 - Six clues revealed in order, from vague to specific (release year, genre, tagline, a supporting cast member, director, lead actor)
-- Each wrong guess or skip reveals the next clue, and the score is the clue number solved on
-- Fuzzy answer matching that accepts alternate titles, common abbreviations and small typos
-- Typeahead suggestions drawn from a known title list
+- **Title slots.** From the start, the board shows the shape of the answer's title: one blank slot per letter or digit, grouped into words, with spaces and punctuation shown. Accents are folded (Amélie shows as AMELIE).
+- **Guesses must be real films.** A guess is resolved to a film in the known title list, through typeahead or fuzzy matching. Input that doesn't match a known film is rejected and costs nothing.
+- **Letter reveals.** On a wrong guess, each word of the guessed title is compared with the same word of the answer, letter by letter, by position. Letters that match in place are revealed and stay revealed for the rest of the game. There are no "right letter, wrong place" hints.
+- **Guess or skip.** A wrong guess reveals the next clue plus any matching letters. A skip reveals only the next clue.
+- The score is the clue number the puzzle is solved on, and a miss after clue 6 is a loss
+- Fuzzy matching that resolves alternate titles, common abbreviations and small typos to the right film
+- Typeahead suggestions drawn from the known title list
 
 **Players**
 
 - Anonymous play by default, with progress kept locally
 - Optional sign-in (email magic link or OAuth) to sync streaks across devices
 - Stats page with streak, solve distribution and history
-- Spoiler-free share card, similar to Wordle's emoji grid
+- Spoiler-free share card, similar to Wordle's emoji grid, that never shows the title's shape or letters
 
 **Puzzle pipeline**
 
-- Nightly job pulls candidate films from TMDB and scores difficulty
+- Nightly job pulls candidate films from TMDB and scores difficulty, including how many other known films share the answer's release year and word pattern
+- Candidates must have data for all six clues, including a tagline, and the title is removed from any clue text
 - Admin review queue to approve, edit or reject generated puzzles
 - Puzzles scheduled at least 7 days ahead
 
 **Integrity**
 
-- The answer never reaches the client before a solve, and the server validates every guess
+- The answer never reaches the client before the game ends, and the server validates every guess
 - Clues are revealed by the server, one per request
+- The server sends only the title's shape and the letters the player has earned. Hidden letters never leave the server.
 
 **Platform**
 
@@ -116,7 +122,7 @@ Every merge to main has to pass these, because how the project is built matters 
 | Area | Standard |
 | --- | --- |
 | Types | TypeScript strict mode everywhere, shared types between client and server, no `any` outside test fixtures |
-| Unit tests | Vitest for the core packages, with coverage on answer matching, scoring and difficulty logic |
+| Unit tests | Vitest for the core packages, with coverage on guess resolution, letter reveals, scoring and difficulty logic |
 | Integration tests | API tests against a real Postgres in Docker |
 | End-to-end tests | Playwright covering the daily solve, share card and head-to-head happy path |
 | CI/CD | GitHub Actions running lint, typecheck, tests and build on every PR, with a preview deploy per PR and auto deploy to production on merge |
@@ -143,7 +149,8 @@ The biggest risk is scope creep, which the phase gates and the out-of-scope list
 | Scope creep stalls the MVP | Ship M2 publicly before starting any phase 2 work |
 | Generated puzzles are too easy or too obscure | Human review queue, plus solve-rate data feeding difficulty scoring |
 | TMDB terms or API changes | Keep TMDB access behind one adapter module, and re-read the terms before each phase |
-| Answer leakage through the client or network | Server-only answers, with a test that checks API responses never contain the title before a solve |
+| Answer leakage through the client or network | Server-only answers, with a test that checks API responses never contain the title, or any letter not yet earned, before the game ends |
+| Short or common title patterns make some puzzles trivial | Difficulty scoring counts films sharing the same year and word pattern, and the review queue shows that count |
 | Cloud costs grow quietly | Budget alerts in Terraform, serverless or scale-to-zero where possible |
 
 **Open questions**

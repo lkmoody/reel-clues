@@ -7,7 +7,7 @@ This plan breaks the MVP from the [project scope](Reel%20Clues%20Movie%20Trivia%
 ## How to use this plan
 
 - **Work top to bottom.** Epics are numbered in build order, and stories within an epic are numbered in order too. A story only depends on stories above it.
-- **One story = one feature branch = one PR into `develop`.** Name branches after the story, for example `feature/2.2-answer-matching`.
+- **One story = one feature branch = one PR into `develop`.** Name branches after the story, for example `feature/2.2-guess-resolution`.
 - **Phases end in a gate.** Don't start the next phase until the gate passes. This is the scope's main defense against scope creep.
 - **Decision stories** (marked 🧭) end in an ADR in `docs/adr/` before any code is written.
 - **Sizes** are rough: **S** is an evening, **M** is a few sessions, **L** is a week or more of evenings.
@@ -48,7 +48,7 @@ This plan breaks the MVP from the [project scope](Reel%20Clues%20Movie%20Trivia%
 | 10 | E. Launch | E10 Launch readiness | The scope's quality bar is met and production is public. The 30-day clock starts. |
 
 **Why this order:**
-- **Domain logic first:** the matching and scoring rules are pure TypeScript with no framework in the way. That's the best place to learn the language.
+- **Domain logic first:** guess resolution, letter reveals and scoring are pure TypeScript with no framework in the way. That's the best place to learn the language.
 - **Playable locally next:** a working game early keeps motivation up and proves the server-authoritative design before any cloud work.
 - **Deploy before the hard features:** getting the playable game onto AWS before the TMDB pipeline means infrastructure isn't one big risky step at the end. Every later story then ships through the real pipeline.
 - **Accounts before admin:** the admin review queue needs a signed-in admin, so accounts come first.
@@ -116,45 +116,71 @@ Turn the single Vite app into the monorepo the scope describes, with strict Type
 
 ### E2: Core game domain (`packages/shared`)
 
-Pure TypeScript with no I/O. This is the heart of the game, and the scope requires coverage on matching and scoring.
+Pure TypeScript with no I/O. This is the heart of the game, and the scope requires coverage on guess resolution, letter reveals and scoring.
+
+**How a game works** (from the scope's Gameplay section):
+- The board shows the title's **shape** from the start: a blank slot per letter or digit, grouped into words, with spaces and punctuation shown and accents folded.
+- A guess must **resolve to a known film**. Input that doesn't is rejected and costs nothing.
+- A **wrong guess** reveals the next clue plus any letters that match **in place, word by word**. Revealed letters stay revealed.
+- A **skip** reveals only the next clue.
+- The score is the clue number the puzzle was solved on. A miss after clue 6 loses.
 
 **2.1 Clue and puzzle types** · S
 - Define the six clue kinds in reveal order as a `const` array, and derive a `ClueKind` union type from it.
-- Add `Clue`, and the API contract types (request and response shapes) the client and server will share.
+- Add `Clue`, the title-shape types (a word is a list of slots, and a slot is hidden, revealed or fixed punctuation), and the API contract types (request and response shapes) the client and server will share.
 - Acceptance: the types compile and are exported from `@reel-clues/shared`.
-- TS focus: `as const`, deriving a union from an array (`(typeof X)[number]`), and `interface` vs `type`.
+- TS focus: `as const`, deriving a union from an array (`(typeof X)[number]`), `interface` vs `type`, and a discriminated union for slots (`{ kind: 'hidden' } | { kind: 'revealed'; char: string } | { kind: 'fixed'; char: string }`).
 
-**2.2 Title normalization and answer matching** · L
+**2.2 Title normalization and guess resolution** · L
 - `normalizeTitle`:
   - lowercase and strip accents and punctuation
   - drop a leading "The", "A" or "An"
   - map `&` to "and"
   - treat "Part II", "II" and "2" as the same
-- `matchGuess(guess, answerKey, otherTitles)` accepts:
-  - the exact title or a curated alias
+- `resolveGuess(input, knownTitles)` returns the film the player meant, or "not a known film". It accepts:
+  - an exact title or a curated alias
   - an auto-generated acronym ("LOTR")
   - small typos, with the allowance scaled to title length
 - Two rules stop false matches:
-  - A guess that exactly names a *different* known film is always wrong ("Alien" is not a typo of "Aliens").
-  - Sequel numbers must agree, so "Rocky 3" never matches "Rocky II".
-- Acceptance: a thorough table-driven test suite (use `it.each`) of accepted and rejected guesses, all passing.
-- TS focus: discriminated unions for the result (`{ correct: true; via } | { correct: false }`), and narrowing on them.
+  - An exact match always wins over a typo match, so "Alien" resolves to *Alien*, never *Aliens*.
+  - Sequel numbers must agree, so "Rocky 3" never resolves to *Rocky II*.
+- A guess is correct when the resolved film **is** the answer film. Comparing film ids means no separate "is this the answer?" matching is needed.
+- Acceptance: a thorough table-driven test suite (use `it.each`) of inputs and the film each should resolve to, or none, all passing.
+- TS focus: discriminated unions for the result (`{ found: true; film } | { found: false }`), and narrowing on them.
 
-**2.3 Game state machine and scoring** · M
-- Write `newGame` and `applyMove(state, move)` as pure functions:
+**2.3 Title shape and letter reveals** · M
+- `titleShape(title)` turns a title into its board:
+  - Words are split on spaces.
+  - Each letter or digit is a hidden slot.
+  - Punctuation (`:`, `'`, `-`, `·` and so on) is a fixed slot, shown from the start.
+  - Accents are folded and letters are uppercased, so *Amélie* becomes `AMELIE`.
+- `lettersRevealed(guessTitle, answerTitle)` compares word 1 with word 1, word 2 with word 2 and so on, by position within each word, using the same folding. It returns the slot positions that match. Words beyond the shorter title don't match anything.
+- `mergeReveals(previous, next)` combines reveals, so letters stay revealed for the rest of the game.
+- Acceptance: table-driven tests, including:
+  - *The Silence of the Lambs* vs *The Prince of Tides*
+  - titles with punctuation (*Ocean's Eleven*, *2001: A Space Odyssey*, *WALL·E*)
+  - accents (*Amélie*)
+  - different word counts
+  - a guess that shares no letters
+- TS focus: readonly nested arrays (`ReadonlyArray<ReadonlyArray<Slot>>`), `Set` for revealed positions, and Unicode normalization (`String.prototype.normalize`).
+
+**2.4 Game state machine and scoring** · M
+- Write `newGame(shape)` and `applyMove(state, move)` as pure functions:
   - A correct guess wins.
-  - A wrong guess or a skip reveals the next clue.
+  - A wrong guess reveals the next clue and merges in its letter reveals.
+  - A skip reveals only the next clue.
   - A miss on clue 6 loses.
+  - Unknown-film inputs never become moves.
 - `scoreOf(state)` returns the clue number the puzzle was solved on, or `null` for a loss.
 - A move after the game ends throws a typed error.
 - Acceptance: every transition is covered by tests.
 - TS focus: `readonly` arrays, union types for moves, and making impossible states impossible to represent.
 
-**2.4 Share card text** · S
-- Build a Wordle-style result, for example `Reel Clues #12 3/6` followed by 🟥⬜🟩⬛⬛⬛.
-- Acceptance: tests for a win on clue 1, a mid-game win and a loss, and the output never contains the title.
+**2.5 Share card text** · S
+- Build a Wordle-style result, for example `Reel Clues #12 3/6` followed by 🟥⬜🟩⬛⬛⬛, where 🟥 is a wrong guess, ⬜ a skip, 🟩 the solve and ⬛ an unused clue.
+- Acceptance: tests for a win on clue 1, a mid-game win and a loss. The output never contains the title, its shape or any letter.
 
-**2.5 Daily date helpers** · S
+**2.6 Daily date helpers** · S
 - `todayKey()` returns `YYYY-MM-DD` in **UTC**, and `puzzleNumber(dateKey, launchDate)` gives the puzzle's number.
 - Acceptance: tests around midnight UTC, including a time zone that's on a different calendar day.
 
@@ -169,11 +195,11 @@ Pure TypeScript with no I/O. This is the heart of the game, and the scope requir
 **3.2 🧭 MVP schema** · M
 - Tables:
   - `films`: TMDB id, title, original title, year, aliases
-  - `known_titles`: the typeahead list
+  - `known_titles`: the typeahead and guess list, with title and year, so remakes can be told apart
   - `puzzles`: date (unique), film, status (`draft` / `approved` / `rejected`), difficulty
   - `clues`: puzzle, number 1–6, kind, text
   - `players`: an anonymous id, later linked to a user
-  - `plays`: player × puzzle, clues revealed, moves, status, score
+  - `plays`: player × puzzle, clues revealed, moves (each guess's resolved film or a skip), revealed letter positions, status, score
 - Add a trigram index on known titles.
 - Write a short ADR for the data model.
 - Acceptance: migrations are generated and applied, and `db:studio` shows the tables.
@@ -182,6 +208,7 @@ Pure TypeScript with no I/O. This is the heart of the game, and the scope requir
 **3.3 Seed data** · M
 - Hand-write about 14 puzzles across consecutive dates starting today, plus a few hundred known titles, and add a `db:seed` script.
 - Write your own clue text; there's no TMDB data yet.
+- Every puzzle's answer must be in the known titles, plus enough films from the same years for real guesses to be possible.
 - Acceptance: a fresh database plus `db:migrate` and `db:seed` gives a playable "today".
 
 ### E4: Game API (`packages/api`, Fastify)
@@ -201,14 +228,28 @@ The server is the single source of truth. The answer never leaves it until the g
 - TS focus: Fastify declaration merging, which lets you add `request.playerId` to Fastify's types.
 
 **4.3 `GET /api/puzzle/today`** · M
-- Return the puzzle number, the date, the clues revealed so far for this player, the status and the moves. Return the answer only if the game is over.
+- Return:
+  - the puzzle number and the date
+  - the **title shape**, with only the letters this player has earned filled in
+  - the clues revealed so far
+  - the status and the moves
+- Return the answer only if the game is over.
 - Acceptance: integration tests for a new player, a game in progress and a finished game.
 
 **4.4 `POST /api/puzzle/today/guess` and `/skip`** · M
-- Load the play, run `matchGuess` (from `shared`) on the server, apply the move with `applyMove`, and save it.
-- Return the next clue, or the result plus the answer when the game ends.
+- For a guess, run `resolveGuess` (from `shared`) on the server.
+  - If the input isn't a known film, respond with a clear "not a known film" error. No move is recorded and no clue is revealed.
+  - Otherwise, compute the letter reveals, apply the move with `applyMove`, and save it.
+- Return the next clue and the updated title shape, or the result plus the answer when the game ends.
 - Validate request bodies with schemas.
-- Acceptance: integration tests for a wrong guess, a skip, a win, a loss and a move after the game is over (rejected).
+- Acceptance: integration tests for:
+  - a wrong guess that reveals letters
+  - a wrong guess that reveals none
+  - an unknown film (rejected, free)
+  - a skip
+  - a win
+  - a loss
+  - a move after the game is over (rejected)
 
 **4.5 `GET /api/titles?q=`** · S
 - Typeahead over `known_titles` using `pg_trgm` similarity, returning at most 10 results.
@@ -216,7 +257,9 @@ The server is the single source of truth. The answer never leaves it until the g
 
 **4.6 Integration test harness and answer-leak test** · M
 - Run API tests against a real Postgres in Docker, both locally and in CI, using a service container or Testcontainers.
-- Add the **answer-leak test**: play a game to just before the end and check that no response body contains the title or an alias.
+- Add the **answer-leak test**: play a game to just before the end and check that:
+  - no response body contains the title or an alias
+  - no response contains a letter the player hasn't earned
 - Acceptance: CI runs the integration tests on every PR.
 
 ### E5: Web gameplay (`packages/web`)
@@ -233,34 +276,41 @@ The server is the single source of truth. The answer never leaves it until the g
 
 **5.3 Daily puzzle screen** · M
 - Show revealed clues in order, a guess input, a Skip button, and the remaining clue slots.
-- Show the server's response, and handle loading and error states.
+- Show the server's response, including the "not a known film" error, and handle loading and error states.
 - Acceptance: you can play a full seed puzzle in the browser.
 
-**5.4 Typeahead input** · M
+**5.4 Title slots board** · M
+- Draw the title shape as letter tiles grouped into words, with fixed punctuation shown and long titles wrapping cleanly on a 360 px screen.
+- Newly revealed letters get a short highlight animation, which is turned off when the user prefers reduced motion.
+- Make it accessible: screen readers announce something like "word 2 of 5, 7 letters, 2 revealed".
+- Acceptance: it renders the 2.3 test titles correctly, and works with the keyboard and a screen reader.
+
+**5.5 Typeahead input** · M
 - A debounced call to `/api/titles` with keyboard navigation and accessible combobox markup.
+- Show each suggestion's year, so remakes can be told apart.
 - Acceptance: it's usable with the keyboard only and on a phone.
 - TS focus: typing React events and refs (`React.KeyboardEvent<HTMLInputElement>`, `useRef<HTMLInputElement>(null)`).
 
-**5.5 Result screen and share** · S
+**5.6 Result screen and share** · S
 - On a win or loss, reveal the film and show the share text.
 - Use the Web Share API where it's available, with copy-to-clipboard as the fallback.
-- Acceptance: the shared text matches story 2.4, and there's no spoiler.
+- Acceptance: the shared text matches story 2.5, and there's no spoiler.
 
-**5.6 Local stats and history** · M
+**5.7 Local stats and history** · M
 - Store finished games in `localStorage`, and compute the streak, the solve distribution and the history.
 - Make storage safe: wrap reads and writes in try/catch and validate the data shape.
 - Acceptance: unit tests for the streak calculation, including gaps and the UTC rollover.
 
-**5.7 Stats page** · S
+**5.8 Stats page** · S
 - Show the streak, the max streak, the solve distribution as bars, and the history list.
 - Acceptance: it shows correct numbers after several days of seeded play.
 
-**5.8 About and credits** · S
-- How to play, plus **TMDB attribution** using an approved logo and the required notice, as the scope requires.
+**5.9 About and credits** · S
+- How to play, including how letter reveals work, plus **TMDB attribution** using an approved logo and the required notice, as the scope requires.
 - Acceptance: the attribution matches TMDB's terms.
 
-**5.9 Playwright end-to-end: daily solve and share** · M
-- Run Playwright against the local stack, covering a solve and the share card.
+**5.10 Playwright end-to-end: daily solve and share** · M
+- Run Playwright against the local stack, covering a wrong guess that reveals letters, a solve and the share card.
 - Acceptance: it runs in CI.
 
 **⛳ Gate B:** a seed puzzle can be solved end to end locally, and the answer-leak test and the E2E test pass in CI.
@@ -326,6 +376,7 @@ Every TMDB call happens here, in the nightly batch job, and never on a player re
 
 **7.2 Candidate selection** · M
 - Pick feature films only, with enough data for all six clues (a tagline, a director and at least two billed cast members), skipping films already used or recently rejected.
+- The answer must be in the known titles, so players can actually guess it.
 - Acceptance: unit tests on the filtering rules using fixtures.
 
 **7.3 Clue builder** · M
@@ -335,11 +386,14 @@ Every TMDB call happens here, in the nightly batch job, and never on a player re
 - Acceptance: tests show that no clue text contains the title or an alias.
 
 **7.4 Difficulty scoring** · M
-- Calculate a score from popularity, vote count and film age. Keep the formula documented and tested, since the scope requires coverage on difficulty logic.
-- Acceptance: well-known films score easier than obscure ones on fixture data.
+- Calculate a score from:
+  - popularity, vote count and film age
+  - **pattern uniqueness:** how many other known titles share the answer's release year and word-length pattern. Fewer look-alikes means an easier puzzle; for example, a 1975 film with one four-letter word is nearly a giveaway.
+- Keep the formula documented and tested, since the scope requires coverage on difficulty logic.
+- Acceptance: well-known films score easier than obscure ones on fixture data, and a short, unique pattern scores easier than a common one.
 
 **7.5 Known-titles refresh** · S
-- Update the typeahead list from TMDB, storing only what the game needs, per the scope's storage rule.
+- Update the known titles (title and year) from TMDB, storing only what the game needs, per the scope's storage rule. This list is both the typeahead and the set of valid guesses.
 - Acceptance: the list grows with no duplicates.
 
 **7.6 Generator job** · M
@@ -375,7 +429,7 @@ Every TMDB call happens here, in the nightly batch job, and never on a player re
 - Acceptance: non-admins get a 403 on every admin route, with tests to prove it.
 
 **9.2 Review queue** · M
-- List draft puzzles with their clues, difficulty and film details.
+- List draft puzzles with their clues, difficulty, film details, title shape and pattern-uniqueness count.
 - Acceptance: drafts made by the generator appear.
 
 **9.3 Edit, approve, reject** · M
