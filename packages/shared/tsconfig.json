@@ -1,15 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "es2023",
-    "lib": ["ES2023"],
-    "types": [],
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "verbatimModuleSyntax": true,
-    "erasableSyntaxOnly": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
-    "noEmit": true
-  },
+  "extends": "../../tsconfig.base.json",
   "include": ["src"]
 }

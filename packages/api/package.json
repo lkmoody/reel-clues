@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc",
     "start": "node src/index.ts"
   },
   "dependencies": {
