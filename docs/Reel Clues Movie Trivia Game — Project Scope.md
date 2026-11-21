@@ -60,15 +60,15 @@ Version 1 is a single-player daily puzzle with accounts, streaks and a generatio
 
 Phase 2 adds the real-time and social layer, and the stretch items are taken on only after phase 2 is stable.
 
-| Feature | Phase | What it proves |
-| --- | --- | --- |
-| Head-to-head mode, two players racing on one puzzle over WebSockets | 2 | Server-authoritative state, reconnection, race conditions |
-| Private leagues with weekly seasons and leaderboards | 2 | Data modeling, ranking queries, caching |
-| Adaptive difficulty from solve-rate data | 2 | Data feedback loop into generation |
-| Push notification when the daily puzzle goes live | 2 | Service workers, scheduled delivery |
-| Image clue mode, a still that un-blurs step by step (server-side processing) | Stretch | Image pipeline, CDN, licensing care |
-| Puzzle archive with play-any-past-day | Stretch | Pagination, access rules |
-| Public read-only API with docs and API keys | Stretch | API design, rate limiting, key management |
+| Feature                                                                      | Phase   | What it proves                                            |
+| ---------------------------------------------------------------------------- | ------- | --------------------------------------------------------- |
+| Head-to-head mode, two players racing on one puzzle over WebSockets          | 2       | Server-authoritative state, reconnection, race conditions |
+| Private leagues with weekly seasons and leaderboards                         | 2       | Data modeling, ranking queries, caching                   |
+| Adaptive difficulty from solve-rate data                                     | 2       | Data feedback loop into generation                        |
+| Push notification when the daily puzzle goes live                            | 2       | Service workers, scheduled delivery                       |
+| Image clue mode, a still that un-blurs step by step (server-side processing) | Stretch | Image pipeline, CDN, licensing care                       |
+| Puzzle archive with play-any-past-day                                        | Stretch | Pagination, access rules                                  |
+| Public read-only API with docs and API keys                                  | Stretch | API design, rate limiting, key management                 |
 
 ## Out of scope
 
@@ -90,16 +90,16 @@ A TypeScript monorepo with one API server as the single source of truth, so the 
 
 The generator writes puzzles to Postgres for review, and players only ever talk to the API.
 
-| Layer | Choice |
-| --- | --- |
-| Repo | pnpm workspaces monorepo with packages for web, api, generator and shared types |
-| Frontend | React + TypeScript with Vite, TanStack Query, PWA plugin |
-| Backend | Node + TypeScript with Fastify, running on AWS Lambda behind API Gateway for the MVP ([ADR 0002](adr/0002-run-mvp-on-aws-lambda.md)), plus a WebSocket server for head-to-head with hosting decided in phase 2 |
-| Database | Postgres hosted on Neon in the app's AWS region, with Drizzle as the typed query layer, and pg\_trgm for fuzzy title matching ([ADR 0001](adr/0001-use-postgres-on-neon.md)) |
-| Cache and real-time state | Redis, deferred until after the MVP (not used in v1) |
-| Jobs | Generator as a Lambda function, triggered nightly by EventBridge Scheduler ([ADR 0002](adr/0002-run-mvp-on-aws-lambda.md)) |
-| Auth | Magic link email or OAuth, with signed session cookies |
-| Infrastructure | Terraform and GitHub Actions on AWS, with the hosting model still open |
+| Layer                     | Choice                                                                                                                                                                                                         |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repo                      | pnpm workspaces monorepo with packages for web, api, generator and shared types                                                                                                                                |
+| Frontend                  | React + TypeScript with Vite, TanStack Query, PWA plugin                                                                                                                                                       |
+| Backend                   | Node + TypeScript with Fastify, running on AWS Lambda behind API Gateway for the MVP ([ADR 0002](adr/0002-run-mvp-on-aws-lambda.md)), plus a WebSocket server for head-to-head with hosting decided in phase 2 |
+| Database                  | Postgres hosted on Neon in the app's AWS region, with Drizzle as the typed query layer, and pg\_trgm for fuzzy title matching ([ADR 0001](adr/0001-use-postgres-on-neon.md))                                   |
+| Cache and real-time state | Redis, deferred until after the MVP (not used in v1)                                                                                                                                                           |
+| Jobs                      | Generator as a Lambda function, triggered nightly by EventBridge Scheduler ([ADR 0002](adr/0002-run-mvp-on-aws-lambda.md))                                                                                     |
+| Auth                      | Magic link email or OAuth, with signed session cookies                                                                                                                                                         |
+| Infrastructure            | Terraform and GitHub Actions on AWS, with the hosting model still open                                                                                                                                         |
 
 Major decisions are recorded as ADRs in [docs/adr](adr/).
 
@@ -119,18 +119,18 @@ Source: [TMDB API Terms of Use](https://www.themoviedb.org/api-terms-of-use).
 
 Every merge to main has to pass these, because how the project is built matters as much as what it does.
 
-| Area | Standard |
-| --- | --- |
-| Types | TypeScript strict mode everywhere, shared types between client and server, no `any` outside test fixtures |
-| Unit tests | Vitest for the core packages, with coverage on guess resolution, letter reveals, scoring and difficulty logic |
-| Integration tests | API tests against a real Postgres in Docker |
-| End-to-end tests | Playwright covering the daily solve, share card and head-to-head happy path |
-| CI/CD | GitHub Actions running lint, typecheck, tests and build on every PR, with a preview deploy per PR and auto deploy to production on merge |
-| Infrastructure | All cloud resources in Terraform, with separate staging and production environments |
-| Observability | Structured JSON logs, request tracing, and metrics for solve rate, active players and API latency, plus alerts when the daily puzzle fails to publish |
-| Security | Server-side guess validation, rate limiting per IP and per account, secrets in a managed store, and dependency scanning |
-| Performance | Lighthouse score of 90 or higher on mobile, with the daily puzzle page under 150 KB of JS |
-| Documentation | README with setup in under 5 commands, an architecture doc, and ADRs for major decisions |
+| Area              | Standard                                                                                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Types             | TypeScript strict mode everywhere, shared types between client and server, no `any` outside test fixtures                                             |
+| Unit tests        | Vitest for the core packages, with coverage on guess resolution, letter reveals, scoring and difficulty logic                                         |
+| Integration tests | API tests against a real Postgres in Docker                                                                                                           |
+| End-to-end tests  | Playwright covering the daily solve, share card and head-to-head happy path                                                                           |
+| CI/CD             | GitHub Actions running lint, typecheck, tests and build on every PR, with a preview deploy per PR and auto deploy to production on merge              |
+| Infrastructure    | All cloud resources in Terraform, with separate staging and production environments                                                                   |
+| Observability     | Structured JSON logs, request tracing, and metrics for solve rate, active players and API latency, plus alerts when the daily puzzle fails to publish |
+| Security          | Server-side guess validation, rate limiting per IP and per account, secrets in a managed store, and dependency scanning                               |
+| Performance       | Lighthouse score of 90 or higher on mobile, with the daily puzzle page under 150 KB of JS                                                             |
+| Documentation     | README with setup in under 5 commands, an architecture doc, and ADRs for major decisions                                                              |
 
 ## Milestones
 
@@ -144,14 +144,14 @@ M2 is the real finish line. Everything after it is optional polish that builds o
 
 The biggest risk is scope creep, which the phase gates and the out-of-scope list are there to hold back.
 
-| Risk | Mitigation |
-| --- | --- |
-| Scope creep stalls the MVP | Ship M2 publicly before starting any phase 2 work |
-| Generated puzzles are too easy or too obscure | Human review queue, plus solve-rate data feeding difficulty scoring |
-| TMDB terms or API changes | Keep TMDB access behind one adapter module, and re-read the terms before each phase |
-| Answer leakage through the client or network | Server-only answers, with a test that checks API responses never contain the title, or any letter not yet earned, before the game ends |
-| Short or common title patterns make some puzzles trivial | Difficulty scoring counts films sharing the same year and word pattern, and the review queue shows that count |
-| Cloud costs grow quietly | Budget alerts in Terraform, serverless or scale-to-zero where possible |
+| Risk                                                     | Mitigation                                                                                                                             |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope creep stalls the MVP                               | Ship M2 publicly before starting any phase 2 work                                                                                      |
+| Generated puzzles are too easy or too obscure            | Human review queue, plus solve-rate data feeding difficulty scoring                                                                    |
+| TMDB terms or API changes                                | Keep TMDB access behind one adapter module, and re-read the terms before each phase                                                    |
+| Answer leakage through the client or network             | Server-only answers, with a test that checks API responses never contain the title, or any letter not yet earned, before the game ends |
+| Short or common title patterns make some puzzles trivial | Difficulty scoring counts films sharing the same year and word pattern, and the review queue shows that count                          |
+| Cloud costs grow quietly                                 | Budget alerts in Terraform, serverless or scale-to-zero where possible                                                                 |
 
 **Open questions**
 
